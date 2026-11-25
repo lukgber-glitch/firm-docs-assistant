@@ -26,7 +26,9 @@ echo "== deploying $SHA"
 if ! ssh "$HOST" "test -f $REMOTE/.env"; then
   echo "== writing $REMOTE/.env (first deploy)"
   ssh "$HOST" "mkdir -p $REMOTE/data"
-  keyget ANTHROPIC_API_KEY | tr -d '\r\n' | ssh "$HOST" "umask 077; { printf 'ANTHROPIC_API_KEY='; cat; printf '\nPOSTGRES_PASSWORD=%s\n' \"\$(openssl rand -hex 24)\"; } > $REMOTE/.env"
+  KEY=$(unset MSYS2_ARG_CONV_EXCL; keyget ANTHROPIC_API_KEY | tr -d '\r\n')
+  [ -n "$KEY" ] || { echo "keyget returned an empty ANTHROPIC_API_KEY" >&2; exit 1; }
+  printf '%s' "$KEY" | ssh "$HOST" "umask 077; { printf 'ANTHROPIC_API_KEY='; cat; printf '\nPOSTGRES_PASSWORD=%s\n' \"\$(openssl rand -hex 24)\"; } > $REMOTE/.env"
 fi
 
 ssh "$HOST" "mkdir -p $REMOTE/app.new $REMOTE/data && rm -rf $REMOTE/app.new/* && test -f $REMOTE/.env"
