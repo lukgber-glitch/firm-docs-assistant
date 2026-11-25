@@ -3,6 +3,8 @@
 # Usage: scripts/deploy.sh   (refuses a dirty tree or a red gate; secrets are written to the server once, never via git)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Git Bash on Windows rewrites standalone "/srv/..." arguments into C:/Program Files/Git/...; switch that off for ssh/scp.
+export MSYS2_ARG_CONV_EXCL="*"
 HOST=lgweb-apps
 REMOTE=/srv/docs-demo
 SITE=docs-demo.lgweb.work
