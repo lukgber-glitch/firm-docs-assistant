@@ -7,8 +7,8 @@ export const EMBEDDING_DIMS = 384;
 
 /** Retrieval */
 export const TOP_K = 4;
-export const CHUNK_SIZE = 900;
-export const CHUNK_OVERLAP = 120;
+export const CHUNK_SIZE = 550;
+export const CHUNK_OVERLAP = 80;
 /**
  * Cosine-similarity floor below which we refuse without calling the model.
  * Calibrated on probe questions (see README, "Refusal threshold"): off-topic questions scored 0.72-0.78 and in-corpus ones 0.81-0.91 -- e5 scores are compressed
@@ -33,3 +33,11 @@ export const USD_TO_EUR = 0.92;
 
 export const REFUSAL_TEXT = "I can't find this in the documents.";
 export const BUDGET_TEXT = "Daily demo budget reached — try again tomorrow.";
+
+/**
+ * Query expansion: one small-model call returns the question in German and in English so that retrieval does not
+ * depend on the cross-language strength of a small embedding model. Priced at the Sonnet rates above on purpose:
+ * Haiku is cheaper, so the ledger can only over-count, never under-count.
+ */
+export const EXPAND_MODEL_ID = "claude-haiku-5-5";
+export const MAX_EXPAND_TOKENS = 150;

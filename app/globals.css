@@ -44,3 +44,4 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .draft { margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 8px; }
 footer { margin-top: 32px; color: var(--muted); font-size: .85rem; text-align: center; }
 details { margin-top: 12px; } summary { cursor: pointer; color: var(--muted); font-size: .85rem; margin-bottom: 10px; } details ol { margin-top: 10px; }
+.searched { margin: 0 0 12px; } .searched em { font-style: normal; color: var(--fg); }

@@ -68,7 +68,7 @@ export async function isHalted(): Promise<boolean> {
   }
 }
 
-export async function recordSpend(kind: "answer" | "draft", eur: number): Promise<void> {
+export async function recordSpend(kind: "answer" | "draft" | "expand", eur: number): Promise<void> {
   await getPool().query("INSERT INTO spend_ledger (kind, eur) VALUES ($1, $2)", [kind, eur.toFixed(6)]);
 }
 

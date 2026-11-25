@@ -4,7 +4,7 @@ import { MAX_QUESTION_CHARS, REFUSAL_TEXT, REFUSAL_THRESHOLD } from "@/lib/confi
 import { ensureSchema } from "@/lib/db";
 import { guard, jsonError } from "@/lib/guard";
 import { answerStream } from "@/lib/llm";
-import { retrieve } from "@/lib/retrieval";
+import { retrieveWithQueries } from "@/lib/retrieval";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function POST(req: Request): Promise<Response> {
   if (blocked) return jsonError(blocked);
 
   await ensureSchema();
-  const passages = await retrieve(question);
+  const { passages, queries } = await retrieveWithQueries(question);
   const enc = new TextEncoder();
   const line = (o: unknown) => enc.encode(JSON.stringify(o) + "\n");
   const sources = passages.map((p, i) => ({
@@ -41,7 +41,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // Stage 1 of refusal: retrieval confidence too low -> no model call, no cost.
   if ((passages[0]?.score ?? 0) < REFUSAL_THRESHOLD) {
-    return new Response(line({ type: "refusal", text: REFUSAL_TEXT, stage: "retrieval" }), { headers });
+    return new Response(line({ type: "refusal", text: REFUSAL_TEXT, stage: "retrieval", queries }), { headers });
   }
 
   const { result, drafts, errors } = answerStream(question, passages);
@@ -57,7 +57,7 @@ export async function POST(req: Request): Promise<Response> {
         }
       };
       try {
-        send({ type: "sources", sources });
+        send({ type: "sources", sources, queries });
         let text = "";
         for await (const delta of result.textStream) {
           text += delta;

@@ -1,5 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { closePool } from "../lib/db";
+import { REFUSAL_TEXT } from "../lib/config";
+import { answerStream } from "../lib/llm";
 import { REFUSAL_THRESHOLD, retrieve } from "../lib/retrieval";
 
 afterAll(async () => {
@@ -57,4 +59,62 @@ describe("retrieval (real splitter + local e5 embeddings + pgvector)", () => {
     expect(hits[0]!.docTitle.length).toBeGreaterThan(3);
     expect(hits[0]!.content.length).toBeGreaterThan(20);
   });
+});
+
+/**
+ * Cross-language: the answer exists ONLY in a document written in the other language than the question.
+ * Each must hit the right doc first AND clear the refusal threshold (which must not be lowered to make this pass).
+ */
+const DE_TO_EN: [string, string][] = [
+  ["Welche Unterlagen brauchen Sie beim Onboarding eines neuen Mandanten?", "client-onboarding-checklist"],
+  ["Wie reiche ich eine Beschwerde über Ihren Service ein?", "complaints-procedure"],
+  ["Wie hoch ist der Stundensatz für einen Partner?", "fee-policy"],
+  ["Wie sind Ihre Öffnungszeiten am Freitag?", "office-hours-contact"],
+  ["Darf ich im Homeoffice Mandantendaten auf privaten USB-Sticks speichern?", "memo-remote-work-client-data"],
+  ["Welche Verzugszinsen fallen bei einer verspäteten Zahlung an?", "fee-policy"],
+];
+const EN_TO_DE: [string, string][] = [
+  ["How long do you keep accounting records and invoices?", "aufbewahrungsrichtlinie"],
+  ["Do you share my personal data with third parties?", "datenschutzhinweis"],
+  ["What is the internal deadline for VAT return documents?", "fristenkalender-2027"],
+  ["How long after the end of the mandate do I get my original documents back?", "mandatsende"],
+  ["What is the four-eyes principle for deadlines?", "memo-fristenkontrolle"],
+  ["Can I pay my invoice in instalments?", "haeufige-fragen-mandanten"],
+];
+
+describe("cross-language retrieval (query expansion)", () => {
+  it.each([...DE_TO_EN, ...EN_TO_DE])("%s -> %s above the threshold", async (q, doc) => {
+    const hit = await top(q);
+    console.log(`XL ${hit.score.toFixed(3)} ${hit.docId} | ${q}`);
+    expect(hit.docId).toBe(doc);
+    expect(hit.score).toBeGreaterThanOrEqual(REFUSAL_THRESHOLD);
+  });
+
+  it("off-topic questions in both languages stay below the threshold", async () => {
+    const qs = [
+      "What is the capital of Peru?",
+      "Welches ist der höchste Berg der Welt?",
+      "Wie backe ich einen Apfelkuchen?",
+    ];
+    for (const q of qs) {
+      const hit = await top(q);
+      console.log(`OFF ${hit.score.toFixed(3)} ${hit.docId} | ${q}`);
+      expect(hit.score, q).toBeLessThan(REFUSAL_THRESHOLD);
+    }
+  });
+
+  // Some off-topic questions score ABOVE the floor and a similarity floor cannot separate them:
+  // "Explain quantum computing" (~0.82 before and after query expansion) and "Wie funktioniert ein Verbrennungsmotor?"
+  // (0.776 before expansion, ~0.83 after: the English expansion "How does ... work" matches the English remote-work memo).
+  // Stage 2, the model's refusal rule, must catch them.
+  it.each(["Explain quantum computing", "Wie funktioniert ein Verbrennungsmotor?"])(
+    "off-topic above the floor is refused by the model (stage 2): %s",
+    async (q) => {
+      const hits = await retrieve(q, 4);
+      console.log(`OFF ${hits[0]!.score.toFixed(3)} ${hits[0]!.docId} | ${q} (stage 2)`);
+      if (hits[0]!.score < REFUSAL_THRESHOLD) return; // already refused at stage 1
+      const { result } = answerStream(q, hits);
+      expect((await result.text).trim()).toBe(REFUSAL_TEXT);
+    },
+  );
 });

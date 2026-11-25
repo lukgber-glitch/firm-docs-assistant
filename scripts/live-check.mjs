@@ -1,5 +1,5 @@
 // RE: n/a (NEITHER - smoke test against the public URL using the same NDJSON protocol as the UI)
-// Usage: node scripts/live-check.mjs [baseUrl]   (exit 1 if any of the four checks fails)
+// Usage: node scripts/live-check.mjs [baseUrl]   (exit 1 if any of the six checks fails)
 const BASE = process.argv[2] ?? "https://docs-demo.lgweb.work";
 
 async function ask(question) {
@@ -33,6 +33,19 @@ try {
   const c = await ask(q3);
   report("(c) out-of-corpus -> refusal", c.refused && c.text.trim() === "" , `Q: ${q3}\n     A: ${c.events.find((e) => e.type === "refusal")?.text ?? short(c.text)}`);
 
+  const q5 = "Welche Unterlagen brauchen Sie beim Onboarding eines neuen Mandanten?";
+  const e = await ask(q5);
+  report("(e) German question, answer only in an English doc", e.cited.length >= 1 && e.citedDocs.includes("client-onboarding-checklist"), `Q: ${q5}
+     A: ${short(e.text)}
+     cited docs: ${e.citedDocs.join(", ")}
+     searched as: ${(e.events.find((x) => x.type === "sources")?.queries ?? []).join(" | ")}`);
+
+  const q6 = "How long do you keep accounting records and invoices?";
+  const f = await ask(q6);
+  report("(f) English question, answer only in a German doc", f.cited.length >= 1 && f.citedDocs.includes("aufbewahrungsrichtlinie"), `Q: ${q6}
+     A: ${short(f.text)}
+     cited docs: ${f.citedDocs.join(", ")}`);
+
   const first = b.sources[0] ?? a.sources[0];
   const d = await fetch(`${BASE}/api/draft`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question: q2, docId: b.sources[0].docId, chunkIndex: b.sources[0].chunkIndex, n: 1 }) });
   const dj = await d.json();
@@ -41,4 +54,4 @@ try {
   console.error("live-check error:", e instanceof Error ? e.message : e);
   results.push(false);
 }
-process.exit(results.length === 4 && results.every(Boolean) ? 0 : 1);
+process.exit(results.length === 6 && results.every(Boolean) ? 0 : 1);

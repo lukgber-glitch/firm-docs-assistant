@@ -36,6 +36,7 @@ export function Ask() {
   const [refusal, setRefusal] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [queries, setQueries] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [active, setActive] = useState<number | null>(null);
   const [draftBusy, setDraftBusy] = useState<number | null>(null);
@@ -46,6 +47,7 @@ export function Ask() {
     setRefusal(null);
     setError(null);
     setSources([]);
+    setQueries([]);
     setDrafts([]);
     setActive(null);
   };
@@ -84,10 +86,16 @@ export function Ask() {
         while ((nl = buf.indexOf("\n")) >= 0) {
           const ev = JSON.parse(buf.slice(0, nl)) as { type: string } & Record<string, unknown>;
           buf = buf.slice(nl + 1);
-          if (ev.type === "sources") setSources(ev.sources as Source[]);
+          if (ev.type === "sources") {
+            setSources(ev.sources as Source[]);
+            setQueries((ev.queries as string[]) ?? []);
+          }
           else if (ev.type === "text") setAnswer((a) => a + (ev.delta as string));
           else if (ev.type === "draft") setDrafts((d) => [...d, ev.draft as Draft]);
-          else if (ev.type === "refusal") setRefusal(ev.text as string);
+          else if (ev.type === "refusal") {
+            setRefusal(ev.text as string);
+            setQueries((ev.queries as string[]) ?? []);
+          }
           else if (ev.type === "done" && ev.refused) setRefusal("I can't find this in the documents.");
           else if (ev.type === "error") setError(ev.message as string);
         }
@@ -177,6 +185,11 @@ export function Ask() {
 
           <aside className="sources">
             <h2>{settled ? "Cited passages" : "Retrieved passages"}</h2>
+            {queries.length > 0 && (
+              <p className="label searched">
+                Searched as: {queries.map((q, i) => (<span key={i}>{i > 0 && " · "}<em>{q}</em></span>))}
+              </p>
+            )}
             {shown.length === 0 && <p className="muted">{refusal ? "No passage was relevant enough." : "Passages appear here."}</p>}
             <ol>{shown.map(renderSource)}</ol>
             {others.length > 0 && (
