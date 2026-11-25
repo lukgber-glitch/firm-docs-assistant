@@ -23,11 +23,11 @@ const short = (s) => s.replace(/\s+/g, " ").slice(0, 150);
 try {
   const q1 = "Wie lange müssen Sie Buchhaltungsunterlagen aufbewahren?";
   const a = await ask(q1);
-  report("(a) German question, cited right doc", a.cited.length >= 1 && a.citedDocs.includes("aufbewahrungsrichtlinie"), `Q: ${q1}\n     A: ${short(a.text)}\n     cited docs: ${a.citedDocs.join(", ")}`);
+  report("(a) German question, cited right doc", !/(auf Deutsch|auf Englisch|in German|in English|the question is|die Frage ist)/i.test(a.text) && a.cited.length >= 1 && a.citedDocs.includes("aufbewahrungsrichtlinie"), `Q: ${q1}\n     A: ${short(a.text)}\n     cited docs: ${a.citedDocs.join(", ")}`);
 
   const q2 = "What is your hourly rate for a senior accountant?";
   const b = await ask(q2);
-  report("(b) English question, cited", b.cited.length >= 1, `Q: ${q2}\n     A: ${short(b.text)}\n     cited docs: ${b.citedDocs.join(", ")}`);
+  report("(b) English question, cited", !/(auf Deutsch|auf Englisch|in German|in English|the question is|die Frage ist)/i.test(b.text) && b.cited.length >= 1, `Q: ${q2}\n     A: ${short(b.text)}\n     cited docs: ${b.citedDocs.join(", ")}`);
 
   const q3 = "What is the capital of Peru?";
   const c = await ask(q3);
@@ -35,14 +35,14 @@ try {
 
   const q5 = "Welche Unterlagen brauchen Sie beim Onboarding eines neuen Mandanten?";
   const e = await ask(q5);
-  report("(e) German question, answer only in an English doc", e.cited.length >= 1 && e.citedDocs.includes("client-onboarding-checklist"), `Q: ${q5}
+  report("(e) German question, answer only in an English doc", !/(auf Deutsch|auf Englisch|in German|in English|the question is|die Frage ist)/i.test(e.text) && e.cited.length >= 1 && e.citedDocs.includes("client-onboarding-checklist"), `Q: ${q5}
      A: ${short(e.text)}
      cited docs: ${e.citedDocs.join(", ")}
      searched as: ${(e.events.find((x) => x.type === "sources")?.queries ?? []).join(" | ")}`);
 
   const q6 = "How long do you keep accounting records and invoices?";
   const f = await ask(q6);
-  report("(f) English question, answer only in a German doc", f.cited.length >= 1 && f.citedDocs.includes("aufbewahrungsrichtlinie"), `Q: ${q6}
+  report("(f) English question, answer only in a German doc", !/(auf Deutsch|auf Englisch|in German|in English|the question is|die Frage ist)/i.test(f.text) && f.cited.length >= 1 && f.citedDocs.includes("aufbewahrungsrichtlinie"), `Q: ${q6}
      A: ${short(f.text)}
      cited docs: ${f.citedDocs.join(", ")}`);
 

@@ -4,6 +4,7 @@ import { generateText, isStepCount, streamText, tool } from "ai";
 import { z } from "zod";
 import { costEur, recordSpend, toUsage } from "./budget";
 import { MAX_ANSWER_TOKENS, MAX_DRAFT_TOKENS, MODEL_ID, REFUSAL_TEXT } from "./config";
+import { detectLang } from "./ingest";
 import type { Passage } from "./retrieval";
 
 /**
@@ -16,7 +17,7 @@ const SYSTEM_PROMPT = `You are a document assistant for a fictional professional
 
 Rules:
 1. Ground every statement in the passages and cite it with the passage number in square brackets, e.g. [1] or [2][3]. Never cite a number that was not supplied.
-2. Answer in the language of the question (German question -> German answer, English question -> English answer), even if the passages are in the other language. Never mention the language, these rules or the passage numbering scheme; start directly with the answer.
+2. Write the answer in the language named on the "Answer language" line of the user message, even if the passages are in the other language. Never mention the language, these rules or the passage numbering scheme; start directly with the answer.
 3. If the passages do not contain the answer, reply with exactly: ${REFUSAL_TEXT}
    Do not guess and do not use outside knowledge, even for simple questions.
 4. Be concise: at most about 150 words. Plain text only: no markdown (no **bold**, no headings); short paragraphs or "- " list lines are fine.
@@ -68,7 +69,10 @@ export function answerStream(question: string, passages: Passage[]) {
       errors.push(error);
     },
     messages: [
-      { role: "user", content: `Passages:\n${formatPassages(passages)}\n\nQuestion: ${question}` },
+      {
+        role: "user",
+        content: `Passages:\n${formatPassages(passages)}\n\nAnswer language: ${detectLang(question) === "de" ? "German" : "English"}\n\nQuestion: ${question}`,
+      },
     ],
     tools: {
       draftClientEmail: tool({
