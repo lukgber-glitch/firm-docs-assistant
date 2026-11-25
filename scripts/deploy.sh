@@ -48,7 +48,7 @@ export GIT_SHA=$SHA
 DC="docker compose -p docs-demo -f compose.yml"
 $DC up -d --build
 # Idempotent corpus ingest (skips when the corpus hash is unchanged). Same hardened image, no published ports.
-$DC run --rm --no-deps app node_modules/.bin/tsx scripts/ingest.ts
+$DC run --rm -T --no-deps app node_modules/.bin/tsx scripts/ingest.ts </dev/null   # </dev/null: otherwise docker eats the rest of this ssh-fed script
 # Drop older images of THIS app only.
 docker images docs-demo-app --format '{{.Tag}}' | grep -v "^$SHA$" | xargs -r -I{} docker rmi docs-demo-app:{} || true
 
