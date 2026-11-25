@@ -1,0 +1,72 @@
+# Production stack for https://docs-demo.lgweb.work, run from /srv/docs-demo with `docker compose -p docs-demo`.
+# Secrets come from /srv/docs-demo/.env (chmod 600, written once by scripts/deploy.sh), never from git.
+# Postgres has NO host port: it is reachable only on the internal compose network.
+services:
+  db:
+    container_name: docs-demo-db
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: docs
+      POSTGRES_DB: docs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in /srv/docs-demo/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+      - /var/run/postgresql:size=8m
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docs -d docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  app:
+    container_name: docs-demo-app
+    image: docs-demo-app:${GIT_SHA:-dev}
+    build:
+      context: ./app
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://docs:${POSTGRES_PASSWORD}@db:5432/docs
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set in /srv/docs-demo/.env}
+      GIT_SHA: ${GIT_SHA:-dev}
+      HALT_FILE: /data/halt
+    ports:
+      - "127.0.0.1:3140:3140"
+    volumes:
+      - /srv/docs-demo/data:/data:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+      - /app/.next/cache:size=64m,uid=1000,gid=1000
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3140/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  pgdata:

@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+models
+docs
+test
+*.log

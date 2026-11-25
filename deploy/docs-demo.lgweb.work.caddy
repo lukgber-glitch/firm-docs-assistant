@@ -1,0 +1,22 @@
+# Installed as /etc/caddy/sites/docs-demo.lgweb.work.caddy by scripts/deploy.sh (the main Caddyfile imports /etc/caddy/sites/*.caddy).
+docs-demo.lgweb.work {
+	encode gzip
+	request_body {
+		max_size 64KB
+	}
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Robots-Tag "noindex"
+		-Server
+	}
+	# Streaming answers: do not buffer. Caddy overwrites X-Forwarded-For with the real peer (no trusted_proxies configured).
+	reverse_proxy 127.0.0.1:3140 {
+		flush_interval -1
+		header_up X-Forwarded-For {remote_host}
+	}
+	# No access log on purpose: client IPs are not written to disk.
+}

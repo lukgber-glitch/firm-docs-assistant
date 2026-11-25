@@ -1,0 +1,47 @@
+{
+  "name": "firm-docs-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ask a firm's documents: RAG with cited answers and one agent step (synthetic demo corpus).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "gate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "ingest": "tsx scripts/ingest.ts",
+    "fetch-model": "tsx scripts/fetch-model.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "onnxruntime-node",
+      "sharp"
+    ]
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.108",
+    "@huggingface/transformers": "^4.3.2",
+    "@langchain/core": "^1.5.1",
+    "@langchain/textsplitters": "^1.0.2",
+    "ai": "^7.0.181",
+    "next": "^16.4.6",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.10",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.1",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^10.15.0",
+    "eslint-config-next": "^16.4.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.1"
+  }
+}
