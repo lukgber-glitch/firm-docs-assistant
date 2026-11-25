@@ -116,7 +116,22 @@ export function Ask() {
   }
 
   const busy = status === "loading" || status === "streaming";
-  const shown = refusal ? [] : sources;
+  const citedNums = new Set([...answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
+  const settled = status === "done" && citedNums.size > 0;
+  const shown = refusal ? [] : settled ? sources.filter((s) => citedNums.has(s.n)) : sources;
+  const others = refusal || !settled ? [] : sources.filter((s) => !citedNums.has(s.n));
+  const renderSource = (s: Source) => (
+    <li key={s.n} ref={(el) => { refs.current[s.n] = el; }} className={active === s.n ? "active" : ""}>
+      <div className="meta">
+        <span className="num">[{s.n}]</span> <strong>{s.docTitle}</strong>
+        <span className="score" title="cosine similarity">similarity {s.score.toFixed(3)}</span>
+      </div>
+      <p className="snippet">{(() => { const t = cleanSnippet(s.snippet); return t.length > 320 ? t.slice(0, 320).trimEnd() + "…" : t; })()}</p>
+      <button type="button" className="link" disabled={busy || draftBusy !== null} onClick={() => void draftFor(s)}>
+        {draftBusy === s.n ? "Drafting…" : "Draft client email from this passage"}
+      </button>
+    </li>
+  );
 
   return (
     <>
@@ -161,27 +176,31 @@ export function Ask() {
           </section>
 
           <aside className="sources">
-            <h2>Cited passages</h2>
+            <h2>{settled ? "Cited passages" : "Retrieved passages"}</h2>
             {shown.length === 0 && <p className="muted">{refusal ? "No passage was relevant enough." : "Passages appear here."}</p>}
-            <ol>
-              {shown.map((s) => (
-                <li key={s.n} ref={(el) => { refs.current[s.n] = el; }} className={active === s.n ? "active" : ""}>
-                  <div className="meta">
-                    <span className="num">[{s.n}]</span> <strong>{s.docTitle}</strong>
-                    <span className="score" title="cosine similarity">similarity {s.score.toFixed(3)}</span>
-                  </div>
-                  <p className="snippet">{s.snippet.length > 320 ? s.snippet.slice(0, 320).trimEnd() + "…" : s.snippet}</p>
-                  <button type="button" className="link" disabled={busy || draftBusy !== null} onClick={() => void draftFor(s)}>
-                    {draftBusy === s.n ? "Drafting…" : "Draft client email from this passage"}
-                  </button>
-                </li>
-              ))}
-            </ol>
+            <ol>{shown.map(renderSource)}</ol>
+            {others.length > 0 && (
+              <details>
+                <summary>Other retrieved passages (not cited): {others.length}</summary>
+                <ol>{others.map(renderSource)}</ol>
+              </details>
+            )}
           </aside>
         </div>
       )}
     </>
   );
+}
+
+/** Display-only cleanup of a markdown chunk: drop the title and disclaimer lines, flatten headings and tables. */
+function cleanSnippet(md: string): string {
+  return md
+    .split("\n")
+    .filter((l) => !/^#\s/.test(l) && !/^\*(Fictional|Fiktives)/.test(l) && !/^\|[-| ]+\|$/.test(l))
+    .map((l) => l.replace(/^#{2,}\s*/, "").replace(/^\|\s*|\s*\|$/g, "").replace(/\s*\|\s*/g, ": ").replace(/\*\*/g, ""))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function DraftBox({ draft }: { draft: Draft }) {
